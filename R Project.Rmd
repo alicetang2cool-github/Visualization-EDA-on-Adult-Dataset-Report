@@ -1,0 +1,267 @@
+---
+title: "Visualization & EDA on Adult Dataset Report"
+author: Alice Tang
+date: March 22, 2005
+output:
+  html_notebook:
+    toc: TRUE
+    toc_float: TRUE
+    theme: cerulean
+    highlight: espresso
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = FALSE,
+                      fig.align = 'center')
+```
+# Introduction   
+  Imagine yourself as one of the respondents who is taking the adult survey. The questioner asks about your information on who you generally are. You have filled in most of the questions regarding your age, race, and marital status. Once your pen hovers over the question about your salary, you may simply circle your salary range without much hesitation, thinking this question is not important at all. However, salary may be the most important question in the survey. It links to all of the other questions in the survey and allows data analytics to understand why certain groups of people have higher proportion of high earners than low earners. This question is very important because high earning may not just come from drive but from multiple aspects of the adult's life. It is also a big indicator of success in American culture. In this visualization and EDA on the Adult dataset, we will observe exactly why a certain population tends to circle the higher range of salary and dive deeper into the topic. 
+  
+# Initial Observations 
+I am using a dataset called adult.data downloaded [here](https://archive.ics.uci.edu/ml/machine-learning-databases/adult/). This dataset was created by Ronny Kohavi and Barry Becker and was used to predict whether income exceeds $50K/yr based on census data. It was also known as "Census Income" dataset. In other words, using a person's information, it was used to predict whether that person makes over 50K a year. 
+
+```{r}
+# Bringing the dataset into R
+df <- read.csv('adult.csv')
+head(df)
+```
+
+### Data Cleaning   
+  After taking a look at the Adult dataset, I have found that heading row for the variables are missing. Thus, I fixed that by adding the row for the 15 variables.  
+  I then replaced all the levels of education below 12th grade as "<=12th". I also placed "Assoc-acdm" and "Assoc-voc" as "Associate". These two actions would make the graphs of `education-num` easier to read because there are less categories in `education-num`.   
+  I also found that missing values are represented by a "?". So, I replaced them with NA, this would make more sense because the values are "not available" in the Adult dataset. 
+```{r}
+names(df) <- c("age", "workclass", "fnlwgt", "education", "education-num", "marital-status", "occupation", "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week", "native-country", "salary")
+df$education <- str_replace_all(df$education, c("Preschool|1st-4th|5th-6th|7th-8th|9th|10th|11th|12th" = "<=12th", "Assoc-acdm|Assoc-voc" = "Associate"))
+df[df == "?"] <- NA
+head(df)
+```
+  
+### The 15 variables: 
+  + age: continuous.  
+  + workclass: Private, Self-emp-not-inc, Self-emp-inc, Federal-gov, Local-gov, State-gov, Without-pay,Never-worked.
+  + fnlwgt: continuous.  
+  + education: Bachelors, Some-college, 11th, HS-grad, Prof-school, Assoc-acdm, Assoc-voc, 9th, 7th-8th, 12th,Masters, 1st-4th, 10th, Doctorate, 5th-6th, Preschool.  
+  + education-num: continuous.  
+  + marital-status: Married-civ-spouse, Divorced, Never-married, Separated, Widowed, Married-spouse-absent,Married-AF-spouse.  
+  + occupation: Tech-support, Craft-repair, Other-service, Sales, Exec-managerial, Prof-specialty,Handlers-cleaners, Machine-op-inspct, Adm-clerical, Farming-fishing, Transport-moving, Priv-house-serv,Protective-serv, Armed-Forces.  
+  + relationship: Wife, Own-child, Husband, Not-in-family, Other-relative, Unmarried.  
+  + race: White, Asian-Pac-Islander, Amer-Indian-Eskimo, Other, Black.  
+  + sex: Female, Male.  
+  + capital-gain: continuous.  
+  + capital-loss: continuous.  
+  + hours-per-week: continuous.  
+  + native-country: United-States, Cambodia, England, Puerto-Rico, Canada, Germany,Outlying-US(Guam-USVI-etc), India, Japan, Greece, South, China, Cuba, Iran, Honduras, Philippines, Italy, Poland, Jamaica, Vietnam, Mexico, Portugal, Ireland, France, Dominican-Republic, Laos, Ecuador, Taiwan, Haiti, Columbia, Hungary, Guatemala, Nicaragua, Scotland, Thailand, Yugoslavia, El-Salvador, Trinadad&Tobago, Peru, Hong, Holand-Netherlands.  
+  + salary: >50K,<=50K  
+  
+### The 32560 obersvations:
+There are 32560 observations in the Adult Dataset. This can be found in two ways, using tail or nrow function. 
+
+```{r}
+nrow(df)
+```
+
+
+# Questions 
+
+## 1. What is the affect of marriage on working hours and salary for both men and women. 
+
+### Affect on males {.tabset}
+According to figure 1 seems like married males tend to work more hours per week than those who aren't currently married. Especially if the his spouse is in the armed forces, then he will work more hours than the others.  
+If we look at males in marriage and their salary, which is displayed in figure 2 married males who don't have an absent spouse tends have a higher possibility of earning over 50K. They have almost no disparity between the two earning categories.  
+However, in figure 2 unmarried males or those with absent spouses tend to have a great desparity between the two earning categories, they tend to earn less than 50K.   
+
+#### marital-status v hours-per-week
+```{r}
+# this looking into the Males of the data set
+df_male = filter(df, sex == "Male")
+
+ggplot(df_male) + geom_boxplot(mapping = aes(x = `marital-status`, y = `hours-per-week`, fill = `marital-status`))  + theme(legend.position = "none") + coord_flip() + xlab("Marital Status") + ylab("Hours per week") + labs(title = "Indian Native Males", tag = "Figure 1")
+```
+#### marital-status v hours-per-week
+```{r message=FALSE}
+q6_table <- summarise( group_by(df_male, `marital-status`), mean_hours = mean(`hours-per-week`, na.rm = TRUE) ) %>% arrange(desc(mean_hours))
+q6_table <- arrange( q6_table, desc(mean_hours) ) 
+q6_table
+```
+#### marital-status v salary
+```{r}
+ggplot(df_male) + geom_bar(mapping = aes(x = `marital-status`, fill = salary), position = "fill")  + scale_y_continuous(labels = scales::percent) + coord_flip() + xlab("Marital Status") + ylab("Percentage") + labs(title = "Indian Native Males", tag = "Figure 2") 
+```
+
+
+### Affect on females {.tabset}
+
+In figure 3 and the table, it seems like married females don't show much difference in work hours than those who aren't married. However, one notable observation in the table is that females who have spouses in the armed forces tend to work the least amount of hours. 
+If we look at females in marriage and their salary in figure 4, married females who don't have an absent spouse tends have a higher possibility of earning over 50K. They have almost no disparity between the two earning categories.  
+However, unmarried females or those with absent spouses tend to have a great disparity between the two earning categories, they tend to earn less than 50K.  
+
+#### Females v hours-per-week
+```{r}
+# this looking into the Females of the data set
+df_female = filter(df, sex == "Female")
+
+ggplot(df_female) + geom_boxplot(mapping = aes(x = `marital-status`, y = `hours-per-week`, fill = `marital-status`)) + theme(legend.position = "none") + coord_flip()  + xlab("Marital Status") + ylab("Hours per week") + labs(title = "Indian Native Females", tag = "Figure 3")
+```
+#### marital-status v hours-per-week
+```{r message=FALSE}
+q6_table <- summarise( group_by(df_female, `marital-status`), ave_hours = mean(`hours-per-week`, na.rm = TRUE) )
+q6_table <- arrange(q6_table, desc(ave_hours))
+q6_table
+```
+#### marital-status v hours-per-week
+```{r}
+ggplot(df_female) + geom_bar(mapping = aes(x = `marital-status`, fill = salary), position = "fill") + scale_y_continuous(labels = scales::percent) + coord_flip() + xlab("Marital Status") + ylab("Percentage") + labs(title = "Indian Native Females", tag = "Figure 4")
+```
+
+
+## 2. Which native-country has the highest porportion of high earners. Is it going to be united-states or a European native? The population of this native-country in the dataset must be large enough to conduct more research into the population.
+According to figure 5, it seems that in our data, people with a native-country of India have the highest proportion of high earners and also has a large enough population in our dataset. These high earners are people who earn over 50 thousands dollars a year. Maybe the Indian natives have a higher proportion of high earners because the Indian natives that come to America are well educated and driven. 
+```{r}
+country_count <- filter(arrange(count(group_by(df, `native-country`)), desc(n)), n >= 100)
+
+country_df <- filter(df, `native-country` == "United-States"|`native-country` == "Mexico"|`native-country` == "Philippines"|`native-country` == "Germany"|`native-country` == "Canada"|`native-country` == "Puerto-Rico"|`native-country` == "El-Salvador"|`native-country` == "India")
+
+ggplot(country_df) + geom_bar(mapping = aes(x = `native-country`,fill = salary), position = "fill") + scale_y_continuous(labels = scales::percent) + coord_flip() + ylab("Percentage") + xlab("Native Country") + labs(title = "Native Countries with Large population", tag = "Figure 5")
+```
+
+
+## 3. What may be the reasons that people with native-country of India tend to have the very high proportion of high earners. {.tabset} 
+Lets take a look at the data of Indian Natives.   
+Observations: there are 100 rows, thus 100 Indian Natives, most of them have Asian-Pac-Islander as their race.  
+
+#### Indian Natives Data    
+But why are Indian born earn far more than people born other native-countries. Lets look at Indian Natives in regards to other variables, such as marital-status, sex, education-num, and occupation.
+```{r}
+df_india <- filter(df, `native-country` == "India")
+df_india
+```
+  
+
+#### Indian Natives compared to other variables
+
+### Indian Natives v marital-status
+According to figure 6, 73% of people with native-country of India are married. From figure 2 and 4 in Question #1 we know that people who are married tend to have higher proportion of earning >50K compared to other marital-status.
+```{r}
+ggplot(df_india) + geom_bar(mapping = aes(x = `marital-status`, y = stat(prop), group = 1, fill = "red")) + scale_y_continuous(labels = scales::percent) + theme(legend.position = "none") + coord_flip() + ylab("Percentage") + xlab("Marital Status") + labs(title = "Indian Natives", tag = "Figure 6") 
+```
+
+### Indian Natives v sex
+looking at the table, 89% of Indian Natives are males. 
+And from the figure 7, a plot between sex and salary, we know that males have a higher probability of earning >50K than females. 
+Also from Question #1 figure 2 we know that males who are married tend to earn the most. 
+Therefore, because most of the Indian Natives are males and married, it makes sense the our Indian Natives population have a high proportion of >50K earners. 
+```{r message=FALSE}
+df_india_sex <- mutate(count(df_india, sex), percentage = (n/nrow(df_india))*100)
+q7_sex <- arrange(df_india_sex, desc(percentage))
+q7_sex
+
+ggplot(df) + geom_bar(mapping = aes(x = sex, fill = salary), position = "fill") + scale_y_continuous(labels = scales::percent) + xlab("Sex") +ylab("Percentage of Salary")  + labs(tag = "Figure 7") 
+```
+
+### Indian Natives v education
+As we can see in fingure 8 and 9, most Indian Natives have masters, bachelors degree, and Prof-school with an average of 12.43 years of education. The number of years in education is higher than all other native-countries besides Taiwan. 
+And from figure 10, we see that it is more likely to earn >50K if a person is well educated.
+Therefore, the one another reason that Indian Natives have a high proportion of >50K earners is because they involve themselves in more education than any other countries besides Taiwan. 
+```{r message=FALSE}
+ggplot(df_india) + geom_bar(mapping = aes(x = education, fill = education)) + theme(axis.text.x = element_text(angle = 90)) + theme(legend.position = "none") + xlab("Education") + labs(tag = "Figure 8") 
+
+dfdsa <- filter(na.omit( summarise(group_by(df, `native-country`), mean_edu = mean(`education-num`, na.rm = TRUE)) ), mean_edu>10)
+
+ggplot(dfdsa) + geom_point(mapping = aes(x = fct_reorder(`native-country`, mean_edu), y = mean_edu, color = `native-country`, size = 10)) + theme(legend.position = "none") + coord_flip() + xlab("Native Country") + ylab("Average years of Education") + labs(tag = "Figure 9") 
+
+ggplot(na.omit(df)) + geom_bar(mapping = aes(x = education, fill = salary), position = "fill") + scale_y_continuous(labels = scales::percent) + coord_flip() + xlab("Education") + ylab("Percentage") + labs(tag = "Figure 10") 
+```
+ 
+### Indian Natives v occupation
+In figure 11, Indian Natives mostly work in prof-specialty. This occupation has high possibilities of earning over 50 thousands dollars a year according figure 12. 
+Because Indian Natives mostly work in prof-specialty, thus, pushing the Indian Natives to have a high proportion of >50K earners. 
+```{r}
+ggplot(df_india) + geom_bar(mapping = aes(x = occupation, fill = occupation)) + theme(axis.text.x = element_text(angle = 90)) + theme(legend.position = "none") + xlab("Occupation") + labs(tag = "Figure 11") 
+
+ggplot(na.omit(df)) + geom_bar(mapping = aes(x = occupation, fill = salary), position = "fill")  + scale_y_continuous(labels = scales::percent) +  coord_flip() + xlab("Occupation") + ylab("Percentage") + labs(tag = "Figure 12") 
+```
+
+
+
+## 4. Are Indians natives doing better in capital during this survey or are they stagnating? How about compared with other country natives {.tabset}
+If we look at the average capital change of country natives in figure 14, we can see that Indian natives' average capital change is far larger than other country natives. This positive change allows us to clearly see that the Indian natives on average have an huge increase in capital during the survey. Thus, during the survey Indians natives are doing better and not stagnating in the economic growth.  
+
+### Lets look at capital gain  
+Lets take a look at native-country that have higher than 1000 average capital gain  
+From figure 13 we can see that Indian natives have the highest average capital gain, thus, we can believe that during the survey Indian natives are still growing in wealth compared to other country natives. Indian natives far surpass other other country natives, following Indian natives are people native in Japan, Taiwan, and Iran. However, they are far behind the average capital gain of Indian natives, by more than a $1000. However, this is not counting capital loss, what is capital loss is also very large and cancels out the growth of capital gain. 
+```{r message=FALSE}
+df_indian_capital_gain_table <- summarise( group_by(df, `native-country`), avg_capital_gain = mean(`capital-gain`, na.rm = TRUE) )
+
+df_indian_capital_gain_table <-filter(df_indian_capital_gain_table,(avg_capital_gain>=1000), (!is.na(`native-country`)))
+
+ggplot(df_indian_capital_gain_table) + geom_point(mapping = aes(x = fct_reorder(`native-country`, avg_capital_gain), y = avg_capital_gain, size = avg_capital_gain, color = `native-country`)) + theme(legend.position = "none") + coord_flip() + xlab("Native Country") + ylab("Average Capital Gain ($)") + labs(tag = "Figure 13") + scale_colour_manual(values = c("black", "black", "black", "black", "red", "black", "black", "black", "black", "black", "black")) + annotate("text", x = "India", y = 3604.920, label = "$3,604", size = 3, vjust = 3)
+```
+
+
+### Lets look at capital loss  
+Looking at figure 14, it plots average capital loss of each country natives, we can see that India has a higher than average capital loss compared to the other country natives. From this we know that some Indian Natives have some loss in capital. However, this won't tell us full story, we need to combine capital gain and loss. 
+```{r message=FALSE}
+df_indian_capital_loss_table <- summarise( group_by(df, `native-country`), avg_capital_loss = mean(`capital-loss`, na.rm = TRUE) )
+
+df_indian_capital_loss_table <-filter(df_indian_capital_loss_table,(avg_capital_loss>=75),(avg_capital_loss<250), (!is.na(`native-country`)))
+
+df_indian_capital_loss_table <- arrange(df_indian_capital_loss_table, desc(avg_capital_loss))
+
+ggplot(df_indian_capital_loss_table) + geom_point(mapping = aes(x = reorder(`native-country`, avg_capital_loss), y = avg_capital_loss, size = avg_capital_loss, color = `native-country`)) + theme(legend.position = "none") + coord_flip() + xlab("Native Country") + ylab("Average Capital Loss ($)") + labs(tag = "Figure 14") + scale_colour_manual(values = c("black", "black", "black", "black", "black", "black", "black", "black", "red", "black", "black", "black", "black", "black", "black", "black", "black", "black")) + annotate("text", x = "India", y = 131.12000, label = "$131", size = 3, vjust = -3)
+
+```
+
+### lets look at capital change
+Looking at capital change is better because we can see the effect of both capital gain and loss on Indian natives and other country natives. The figure 15 plots average capital change of each country natives. From this we can tell that Indian natives have the largest average capital change, thus they have an huge increase in capital during the survey. 
+```{r message=FALSE}
+df_capital_change <- mutate(df, capital_change = `capital-gain` - `capital-loss`)
+
+df_capital_change <- summarise( group_by(df_capital_change, `native-country`), avg_capital_change = mean(capital_change, na.rm = TRUE) )
+
+df_capital_change <-filter(df_capital_change,(avg_capital_change>600), (!is.na(`native-country`)))
+
+df_capital_change <- arrange(df_capital_change, desc(avg_capital_change))
+
+ggplot(df_capital_change) + geom_point(mapping = aes(x = reorder(`native-country`, avg_capital_change), y = avg_capital_change, size = avg_capital_change, color = `native-country`)) + theme(legend.position = "none") + coord_flip() + xlab("Native Country") + ylab("Average Capital Change ($)") + labs(tag = "Figure 15") + scale_colour_manual(values = c("black", "black", "black", "black", "black", "black", "red", "black", "black", "black", "black", "black", "black", "black")) +  annotate("text", x = "India", y = 3473.8000, label = "$3,473", size = 3, vjust = 3)
+```
+### Capital change for each sex
+However, looking the average capital change of each sex, we notice that each Indian Native male has vastly more capital gain than each Indian Native female. Thus, there is a big difference between the males and females in the Indian Native population. 
+```{r message=FALSE}
+df_india_capital_change <- mutate(df_india, capital_change = `capital-gain` - `capital-loss`)
+summarise(group_by(df_india_capital_change, sex), avgl_capital_change = mean(capital_change))
+```
+
+
+
+## 5. What is the difference between Males and Females in the Indian Natives population?  {.tabset}
+From Question #4, we have seen the vast difference between the average capital gain of each sex. This points out that there are big differences between the sexes. We will observe the difference in regards to others variables. These other variables may be the cause of this large capital difference.   
+From the observation in figure 16, 17, and 18 we can see the reasons that the females have a much lower average capital change. It is because they don't have higher education then the males in figure 16, they also don't work in higher paying jobs in figure 17. Thus, they have a lower proportion of >50K earners than males in figure 18. These information lets us understand the reason females have a lower average capital change than males. The females still have a positive change, thus, female Indian Natives are still increasing in wealth during the survey, their growth is just not a large as male Indian Natives. 
+
+### sex v education
+We know from question #3 that a well educated person is more likely to earn >50K. 
+From the figure 16 we see that female Indian Natives are not as educated as males. Also, there are no females in professional school and Doctorates, which are the highest levels of education. 
+```{r message=FALSE}
+summarise(group_by(df_india, sex), avg_education = mean(`education-num`, na.rm = TRUE)) 
+ggplot(df_india) + geom_bar(mapping = aes(x = education, fill = sex), position = "dodge") + coord_flip() + xlab("Education") + labs(tag = "Figure 16") 
+```
+### sex v occupation
+From figure 17 we can see that no female Indian Natives work in Prof-specialty or Exec-managerial, these two jobs have the highest probability of >50K pay. However, most and only male Indian Natives work in these occupation. 
+```{r}
+ggplot(df_india) + geom_bar(mapping = aes(x = occupation, fill = sex), position = "dodge") + coord_flip() + xlab("Occupation") + labs(tag = "Figure 17") 
+```
+
+### sex v salary
+In the figure 18 below we can see that the difference in proportion of salary for each sex. For males, there is about 40% chance that he will earn >50K, however, for females there is less than 20% chance she will earn >50K. 
+```{r}
+df_india_male <- filter(df_india, sex == "Male")
+df_india_female <- filter(df_india, sex == "Female")
+
+ggplot(df_india) + geom_bar(mapping = aes(x = salary, y = stat(prop), group = 1, fill = sex)) + scale_y_continuous(labels = scales::percent) + coord_flip() + ylab("percentage") + facet_wrap(~ sex, nrow = 2)  + labs(tag = "Figure 18") 
+```
+
+
+
+# Conclusion  
+With the use of the conclusions from all 5 questions, we have found a substantial population native outside of America who tends to have very high proportions of high earners. Its population is adults whose Native Country is India, it would be better if there was more data on Indian Natives. To understand the cause of this finding, we have looked into why Indian Natives tend to have high earners using their information in comparison with the whole dataset. The reason Indian Natives tend to have high earners is that they are more advance in education, they tend to be married, they have more males in the survey, and they tend to work the high-paying occupation. The reason Indian Natives tend to have high earners is that they are more advance in education, they tend to be married, they have more males in the survey, and they tend to work the high-paying occupation. All these characteristics lead adults to have a high probability of earning >=50K. A population may have great circumstances right now, but that may change. Thus, we find out whether they will continue to grow or if their current situation is stagnation of their wealth. Looking at capital change, we find that their average capital change is very large, thus during the year of the survey Native Indians' wealth had enormous growth. Later on, we found that there is a huge gap of wealth within the Native Indian population and that as a result of sex. Females in comparison to males have much lower wealth, education, and occupation. This gap in the population may be the result of the cultural expectation of each sex. Indian culture expects the females to be the caretaker and the males to be the breadwinner of the family. This difference in expectations can lead to a difference in capital change and wealth. Despite this gap in the Native Indian population, they still were the fastest and wealthiest population in America during the survey. 
+

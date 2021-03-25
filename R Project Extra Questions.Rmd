@@ -1,0 +1,226 @@
+---
+title: "R Project Extra Questions"
+output: html_notebook
+---
+These are the extra problems in the R project about Adult Dataset
+
+# setting the dataset up
+```{r}
+# Bringing the dataset into R
+df <- read.csv('adult.csv')
+names(df) <- c("age", "workclass", "fnlwgt", "education", "education-num", "marital-status", "occupation", "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week", "native-country", "salary")
+df[df == "?"] <- NA
+head(df)
+```
+
+# Questions from document 
+## 1. How many men and women (sex feature) are represented in this dataset?  {.tabset}  
+  we can answer this using a bar chart, we can also use count. Thus, we have 21789 Males and 10771.  
+  
+### table 1  
+```{r}
+# first way, which is visually appealing
+ggplot(data = df) + 
+		  geom_bar( mapping = aes(x = sex, fill = sex) )
+```
+### table 2
+```{r}
+# second way, which is more accurate but not as visually appealing 
+count(df, sex)
+```
+
+Observation: this gives us a ratio of almost 2 males to 1 females.  
+If we ask why we have more males to females, it may be because males are more willing to take the survey and give out personal information. On the other hand, females are more wary and less likely to give out personal information.
+
+## 2. What is the average age (age feature) of women and men?
+In order to find the average age of women and men, we have to use summarise function in the dplyr library
+```{r}
+summarise( group_by(df, sex), average_age = mean(age, na.rm = TRUE) )
+```
+Thus, the average age of women is 36.85 and the average age of men is 39.43.  
+Observation: the average ages between the sexes are pretty close. 	
+
+## 3. What is the percentage of German/Chinese/Japanese/U.S. citizens (native-country feature)? {.tabset}  
+To find the percentage of the native-country feature, we should use plotting method called geom_bar, or we could use count to find the percentage. Thus, German is 0.42%, Chinese is 0.23%, Japanese is 0.19%, U.S. is 9.59%.
+Observation: USA has by far the greatest number of native-born in our data, maybe the data collectors focused on surveying Americans because of its population diversity.  
+
+### table 1
+```{r}
+ggplot(data = df) + geom_bar(mapping = aes(x = `native-country`, y = stat(prop), group = 1)) + scale_y_continuous(labels = scales::percent) + coord_flip()
+```
+### table 2
+```{r}
+df_percentage <- mutate(count(df, `native-country`), percentage = (n/nrow(df))*100 )
+q3_table <- arrange(df_percentage, desc(percentage))
+q3_table
+```
+
+## 4. What are the mean and standard deviation of age for those who earn more than 50K per year (salary feature) and those who earn less than 50K per year?
+In order to get the mean and standard deviation for this we must use summarise and group_by.
+Thus, for those who have salary <= 50K, the mean of age is 36.78365, and standard deviation of age is	14.02037. 
+For those who have salary > 50K, the mean of age is 44.24984, and standard deviation of age is 10.51903 
+```{r}
+q4_table <- summarise( group_by(df, salary), age_mean = mean(age, na.rm = TRUE), age_sd = sd(age, na.rm = TRUE) )
+q4_table
+```
+Observation: the lower earners tend to be younger people and the higher earner tend to be older people.  
+
+## 5. Is it true that people who earn more than 50K have at least high school education? (education – Bachelors, Prof-school, Assoc-acdm, Assoc-voc, Masters or Doctorate feature)  {.tabset}  
+The direct answer is no, there are people who earn more than 50K and have lower education than high school. 
+However, by looking at the second graph, there are more people with high education and 50K than having low education and 50K
+Thus, people would be more likely to earn more than 50K if they are a HS-grad and above.  
+
+### table 1
+```{r}
+df <- mutate(df, education = fct_relevel(education, " Preschool", " 1st-4th", " 5th-6th", " 7th-8th", " 9th", " 10th", " 11th", " 12th", " HS-grad", " Assoc-acdm", " Assoc-voc", " Some-college", " Bachelors", " Masters", " Prof-school", " Doctorate"))
+ggplot(df) + geom_point(mapping = aes(x = salary, y = education, color = salary))
+```
+### table 2
+```{r}
+ggplot(df) + geom_count(mapping = aes(x = salary, y = education, color = salary))
+```
+
+# My Questions
+## 1. My question: What is the average years of education for each occupation and each race? {.tabset}
+
+#### race v education-num 
+```{r}
+ggplot(df) + geom_boxplot( mapping = aes(x = race, y = `education-num`, color = race)) + theme(axis.text.x = element_text(angle = 90))
+```
+
+#### occupation v education-num 
+```{r}
+ggplot(df) + geom_boxplot( mapping = aes(x = occupation, y = `education-num`, color = occupation)) + theme(axis.text.x = element_text(angle = 90))
+```
+Boxplot of asian and whites look the same, both with about the same medians and out-liers, 
+black and amer-indian-eskimo also have very similar boxplots, both with lower medians and many out-liers. The race other has the lowest median, these may be mixed races or extreme minorities. 
+
+For education and occupation, we can see that the people in prof-specialty and exec-managerial by far have the most years in education. people in services have the least years of education.
+
+## 2. My question: Which job has the highest divorce and lowest divorce
+```{r}
+df_divorce = filter(df, `marital-status` == "Divorced" )
+q3 <- table(df_divorce$occupation)
+prop.table(q3)
+```
+people who work as Adm-clerical has the highest proportion of divorce with their spouse
+
+people who work as Armed-Forces has the lowest to none proportion of divorce with their spouse
+
+## 3. My question: Which job has the highest average hours worked and lowest average hours worked
+```{r}
+ggplot(df) + geom_boxplot(mapping = aes(x = occupation, y = `hours-per-week` )) + coord_flip()
+arrange(summarise(group_by(df, occupation), average_hours = mean(`hours-per-week`, na.rm = TRUE)), desc(average_hours))
+```
+The jobs with the highest average hours worked is Farming-fishing and Exec-managerial
+The jobs with the lowest average hours worked is Priv-house-serv and Other-service and Adm-clerical
+
+## 4. My question: Which job has the highest porportion of good pay
+```{r}
+q4 <- table(df$occupation, df$salary)
+prop.table(q4)
+count(df, occupation, salary)
+ggplot(na.omit(df)) + geom_bar(mapping = aes(x = occupation, fill = salary)) + coord_flip()
+```
+The jobs has the highest proportion of >50K pay is Prof-specialty and Exec-managerial   
+These jobs have a higher chance than other jobs to receive a pay of >50K
+
+## 5. My question: Which job have tend to have the most unmarried people
+```{r}
+q5 <- table(df$occupation, df$`marital-status`)
+prop.table(q5)
+
+ggplot( count(df, occupation, `marital-status`) ) + geom_tile(mapping = aes(x = occupation, y = `marital-status`, fill = n)) + theme(axis.text.x = element_text(angle = 90))
+
+```
+It seems that other service has the highest amount of unmarried people. Other service could be a waiter, bartender, dishwasher, or food deliverer. These service has a lower standards and isn't back breaking, thus attracting unmarried people, who tend to be young. 
+
+## 6. My question: Which sex has more years of educaton and pay
+```{r}
+ggplot(df) + geom_boxplot(mapping = aes(x = sex, y = `education-num`, fill = sex))
+
+summarise(group_by(df, sex), mean_education = mean(`education-num`, na.rm = TRUE))
+
+q6 <- table(df$sex, df$salary)
+prop.table(q6)
+```
+The median of the two sex have the same years of education, however, there are more males who tend to have more years of education than females, the males also have a slightly more years of education when we look at the mean. 
+Also, males tend to have a higher ratio of >50K of 1/2, females have lower ratio of 3/29
+
+
+
+## 7 My question: What is the relationship between marriage status and education num. Is it true that people with more education will less likely be in a relationship, because they are picky and driven in the work force.  
+```{r}
+ggplot(df) + geom_boxplot(mapping = aes(x = `marital-status`, y = `education-num`, fill = `marital-status`)) + theme(axis.text.x = element_text(angle = 90))
+
+q10_table <- summarise( group_by(df, `marital-status`), mean_education = mean(`education-num`, na.rm = TRUE) ) 
+q10_table <- arrange( q10_table, desc(mean_education) ) 
+q10_table
+```
+False, people who are married and is together with their spouse tends to have a more years in education, or people who have more years in education tend to be married and is together with their spouse. 
+I believe it is that people with more education tends to be married and is together with their spouse. This may be because of finacial reasons because people who have more education tends to get a higer salary. 
+
+## 8 My question: Which kind of people tend to be widows, is it possible that there are aspects of the person that have a higher correlation with being a widow? {.tabset}
+
+### lets look at the data of widows, what kind of people were they?
+```{r}
+df_widow = filter(df, `marital-status` == "Widowed")
+df_widow
+```
+### average age of widow, and a boxplot
+```{r}
+summarise(df, mean_age = mean(age, na.rm = TRUE))
+summarise(df_widow, widow_mean_age = mean(age, na.rm = TRUE))
+
+ggplot(df_widow) + geom_boxplot(mapping = aes(y = age)) + coord_flip()
+```
+the age age of a widow is 58 years old, that is pretty old compared to our overall data which is 38 years old, also seeing that there are out-liers in the boxplot of people who are younger, we can tell that the overall age of widows are old and around 60. 
+
+### sex and education of widows
+```{r}
+count(df_widow, sex)
+count(df_widow, education)
+```
+most of the widows in the data set are females, which is unsurprising because females often outlive their spouse. 
+They also had low education, majority of them where only highschool gradates, which is not surprising because they are very old and education wasn't as easily accessible when these women where young. 
+
+
+## 9 My question: How does marriage affect Indian natives and what is the difference between males and females? Is it the same effect as marriage on the entire data set like in Question #1.
+In Question #1 we observe that males who are married have the highest proportion of >50K earners and also work the most hours compared to other marital status.
+Females on the other hand, also have the highest proportion of >50K earners but no drastic change in working hours. 
+### males {.tabset}
+In our graphs divorced Indian males work the most hours, a whooping 55 hours. However, there are very few divorced Indian males. Thus, not enough information to say that divorced Indian males tend to work more hours than other males. 
+I have finally found a population that has a higher proportion of >50K than <=50K, a ratio of 35/33. This population is Married-civ-spouse Indian Males. 
+#### marital-status v hours-per-week
+```{r message=FALSE}
+df_india_male = filter(df_india, sex == "Male")
+
+ggplot(df_india_male) + geom_boxplot(mapping = aes(x = `marital-status`, y = `hours-per-week`, fill = `marital-status`)) + theme(axis.text.x = element_text(angle = 90))
+q7_table <- summarise( group_by(df_india_male, `marital-status`), mean_hours = mean(`hours-per-week`, na.rm = TRUE) ) %>% arrange(desc(mean_hours))
+q7_table <- arrange( q7_table, desc(mean_hours) ) 
+q7_table
+```
+#### marital-status v salary
+```{r}
+table7 <- table(df_india_male$`marital-status`, df_india_male$salary)
+prop.table(table7)
+```
+
+
+### Females {.tabset}
+Separated Indian females work the most hours, 41 hours. However, there are very few Separated Indian females. Thus, not enough information to say that Separated Indian females tend to work more hours than other females.  
+#### marital-status v hours-per-week  
+```{r}
+df_india_female = filter(df_india, sex == "Female")
+
+ggplot(df_india_female) + geom_boxplot(mapping = aes(x = `marital-status`, y = `hours-per-week`, fill = `marital-status`)) + theme(axis.text.x = element_text(angle = 90))
+
+qf_table <- summarise( group_by(df_india_female, `marital-status`), mean_hours = mean(`hours-per-week`, na.rm = TRUE) ) %>% arrange(desc(mean_hours))
+qf_table <- arrange( qf_table, desc(mean_hours) ) 
+qf_table
+```
+#### marital-status v salary  
+```{r}
+table7f <- table(df_india_female$`marital-status`, df_india_female$salary)
+prop.table(table7f)
+```
